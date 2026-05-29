@@ -134,7 +134,8 @@ if st.button("🚀 쇼츠 영상 제작 시작!"):
                         
                         # 키워드가 완벽하게 매칭되는 고해상도 세로 사진 엔진 가동
                         search_url = f"https://loremflickr.com/1080/1920/{keyword},seoul,cafe,coffee,interior"
-                        try:
+                        
+                            try:
                             req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
                             with urllib.request.urlopen(req) as response, open(image_path, 'wb') as out_file:
                                 out_file.write(response.read())
