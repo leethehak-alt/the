@@ -1,20 +1,27 @@
 import os
 import json
 import urllib.request
+import streamlit as st
 from google import genai
 from google.genai import types
 from gtts import gTTS
 import moviepy
 
-# 최신 2.0+ 버전에서 가장 에러 없는 다이렉트 경로 지정
+# 최신 2.0+ 버전 경로 지정
 ImageClip = moviepy.ImageClip
 AudioFileClip = moviepy.AudioFileClip
 concatenate_videoclips = moviepy.concatenate_videoclips
 
-API_KEY = "AQ.Ab8RN6J3oC3Z7PJWe2tQCPNMCWYQrWV0G4jJF5DOOY15MERIcQ"
-client = genai.Client(api_key=API_KEY)
+# --- 웹 화면 꾸미기 ---
+st.set_page_config(page_title="AI 쇼츠 제작기", page_icon="🎬", layout="centered")
+st.title("🎬 AI 유튜브 쇼츠 자동 제작기")
+st.write("나만의 주제를 입력하여 멋진 쇼츠 영상을 만들어보세요!")
 
-def generate_shorts_script(topic):
+# 안전하게 사용자에게 API 키를 화면에서 입력받음 (코드 노출 방지)
+USER_API_KEY = st.text_input("🔑 본인의 Gemini API 키를 입력하세요", type="password")
+test_topic = st.text_input("✍️ 쇼츠 영상 주제를 입력하세요", placeholder="예: 직장인 공감 유머 TOP 3")
+
+def generate_shorts_script(client, topic):
     prompt = f"""
     너는 유튜브 쇼츠 전문 크리에이터야.
     주제인 '{topic}'에 대해 시청자의 이탈을 막을 수 있는 흥미진진한 30초 분량의 쇼츠 대본을 작성해줘.
@@ -39,10 +46,8 @@ def generate_shorts_script(topic):
     return json.loads(response.text)
 
 def make_final_video(script_data):
-    print("\n🎬 4단계: 최종 쇼츠 영상 생성을 시작합니다. (렌더링)")
     assets_folder = "shorts_assets"
     scenes = script_data.get("scenes", [])
-    
     video_clips = []
     
     for scene in scenes:
@@ -53,37 +58,54 @@ def make_final_video(script_data):
         audio_clip = AudioFileClip(audio_path)
         duration = audio_clip.duration
         
-        # 구버전/최신버전 문법 모두 방어
         try:
             image_clip = ImageClip(image_path).with_duration(duration).with_audio(audio_clip)
         except:
             image_clip = ImageClip(image_path).set_duration(duration).set_audio(audio_clip)
             
         video_clips.append(image_clip)
-        print(f"📹 [{num}번 장면] 비디오+오디오 합성 준비 완료 ({duration:.1f}초)")
         
-    print("\n📦 모든 장면을 하나로 이어 붙이는 중입니다...")
     final_video = concatenate_videoclips(video_clips, method="compose")
-    final_video.write_videofile("final_shorts.mp4", fps=24, codec="libx264", audio_codec="aac")
-    print("\n🎉 대성공! 최종 영상이 'final_shorts.mp4' 파일로 저장되었습니다!")
+    output_path = "final_shorts.mp4"
+    final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac")
+    return output_path
 
-if __name__ == "__main__":
-    test_topic = "직장인 공감 유머 TOP 3"
-    script_result = generate_shorts_script(test_topic)
-    
-    if script_result:
-        assets_folder = "shorts_assets"
-        if not os.path.exists(assets_folder): os.makedirs(assets_folder)
-        
-        for scene in script_result["scenes"]:
-            tts = gTTS(text=scene["narration"], lang='ko', slow=False)
-            tts.save(f"{assets_folder}/scene_{scene['scene_number']}.mp3")
-            
-            image_path = f"{assets_folder}/scene_{scene['scene_number']}.jpg"
-            search_url = f"https://picsum.photos/1080/1920"
+# --- 실행 버튼 ---
+if st.button("🚀 쇼츠 영상 제작 시작!"):
+    if not USER_API_KEY:
+        st.error("API 키를 입력해 주세요!")
+    elif not test_topic:
+        st.error("주제를 입력해 주세요!")
+    else:
+        with st.spinner("AI가 영상을 열심히 굽는 중입니다... 약 1~2분 소요됩니다."):
             try:
-                urllib.request.urlretrieve(search_url, image_path)
-            except:
-                pass
+                client = genai.Client(api_key=USER_API_KEY)
+                script_result = generate_shorts_script(client, test_topic)
                 
-        make_final_video(script_result)
+                if script_result:
+                    assets_folder = "shorts_assets"
+                    if not os.path.exists(assets_folder): os.makedirs(assets_folder)
+                    
+                    for scene in script_result["scenes"]:
+                        tts = gTTS(text=scene["narration"], lang='ko', slow=False)
+                        tts.save(f"{assets_folder}/scene_{scene['scene_number']}.mp3")
+                        
+                        image_path = f"{assets_folder}/scene_{scene['scene_number']}.jpg"
+                        search_url = f"https://picsum.photos/1080/1920"
+                        try:
+                            urllib.request.urlretrieve(search_url, image_path)
+                        except:
+                            pass
+                            
+                    video_file_path = make_final_video(script_result)
+                    
+                    st.success("🎉 영상 제작 대성공!")
+                    with open(video_file_path, "rb") as file:
+                        st.download_button(
+                            label="📥 완성된 쇼츠 영상 다운로드 받기",
+                            data=file,
+                            file_name="my_ai_shorts.mp4",
+                            mime="video/mp4"
+                        )
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
