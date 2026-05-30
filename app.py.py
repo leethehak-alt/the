@@ -18,7 +18,7 @@ concatenate_videoclips = moviepy.concatenate_videoclips
 
 st.set_page_config(page_title="AI 멀티 트렌드 마스터 프로", page_icon="🎬", layout="centered")
 
-# [1] 화면 상단 3단 모드 선택 장치 (교정 배치 완료)
+# [1] 화면 상단 3단 모드 선택 장치
 creation_mode = st.radio(
     "📱 어떤 방식으로 영상을 제작하실 건가요?",
     ["💡 일반 유튜브 대본용 (주제 입력)", "📝 티스토리 블로그용 (본문 글 요약)", "🔥 다음카페 실시간 핫이슈 (자동 수집)"],
@@ -222,7 +222,7 @@ if st.button("🚀 멀티 쇼츠 영상 제작 시작!"):
                                 search_url = f"https://loremflickr.com/1080/1920/{clean_keyword},news,trend"
                                 req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
                                 with urllib.request.urlopen(req) as response, open(image_path, 'wb') as out_file:
-                                    out_file.write(response.read())
+                                    f.write(response.read())
                             except:
                                 urllib.request.urlretrieve(f"https://picsum.photos/1080/1920", image_path)
                             
