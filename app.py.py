@@ -1,13 +1,23 @@
 import os
-import json
+import sys
+import subprocess
 import urllib.request
+import json
+
+# [긴급 처방] bs4와 requests가 없으면 코드가 실행되면서 스스로 즉석 설치하도록 만듭니다.
+try:
+    from bs4 import BeautifulSoup
+    import requests
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "beautifulsoup4", "requests"])
+    from bs4 import BeautifulSoup
+    import requests
+
 import streamlit as st
 from google import genai
 from google.genai import types
 from gtts import gTTS
 import moviepy
-import requests
-from bs4 import BeautifulSoup
 
 # moviepy 핵심 기능 정의
 ImageClip = moviepy.ImageClip
@@ -222,7 +232,7 @@ if st.button("🚀 멀티 쇼츠 영상 제작 시작!"):
                                 search_url = f"https://loremflickr.com/1080/1920/{clean_keyword},news,trend"
                                 req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
                                 with urllib.request.urlopen(req) as response, open(image_path, 'wb') as out_file:
-                                    f.write(response.read())
+                                    out_file.write(response.read())
                             except:
                                 urllib.request.urlretrieve(f"https://picsum.photos/1080/1920", image_path)
                             
